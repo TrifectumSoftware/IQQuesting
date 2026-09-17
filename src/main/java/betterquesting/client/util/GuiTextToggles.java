@@ -19,9 +19,9 @@ public final class GuiTextToggles {
             + "|&#[0-9a-fA-F]{6}" // &#RRGGBB (8 chars)
             + "|&[0-9a-fA-Fqgzv]"); // legacy & colors, &q/&g/&z/&v
 
-    // Strips BQ formatting tags that add color. URL is excluded so links stay clickable;
-    // the §1/§9 color that [url] inserts is already handled by COLOR_CODE_REMOVER.
-    private static final Pattern BQ_TAG_REMOVER = Pattern.compile("\\[(?:warn|note|quest)]|\\[/(?:warn|note|quest)]");
+    // Strips BQ formatting tags that add color. URL and quest are excluded so links stay clickable;
+    // the §1/§9 color that [url]/[quest] inserts is already handled by COLOR_CODE_REMOVER.
+    private static final Pattern BQ_TAG_REMOVER = Pattern.compile("\\[(?:warn|note)]|\\[/(?:warn|note)]");
 
     public static String applyMonochromeIfEnabled(String s) {
         if (s == null) return null;

@@ -31,7 +31,10 @@ import org.lwjgl.opengl.GL11;
 
 import com.google.common.collect.ImmutableSet;
 
+import betterquesting.api.properties.NativeProps;
+import betterquesting.api.questing.IQuest;
 import betterquesting.api.storage.BQ_Settings;
+import betterquesting.api.utils.BigItemStack;
 import betterquesting.api.utils.RenderUtils;
 import betterquesting.api.utils.UuidConverter;
 import betterquesting.api2.client.gui.misc.GuiAlign;
@@ -41,7 +44,9 @@ import betterquesting.api2.client.gui.misc.URIHandlers;
 import betterquesting.api2.client.gui.panels.IGuiPanel;
 import betterquesting.api2.client.gui.resources.colors.GuiColorStatic;
 import betterquesting.api2.client.gui.resources.colors.IGuiColor;
+import betterquesting.api2.client.gui.resources.textures.ItemTexture;
 import betterquesting.api2.utils.QuestTranslation;
+import betterquesting.api2.utils.TextFormattingUtils;
 import betterquesting.client.gui2.GuiQuest;
 import betterquesting.core.BetterQuesting;
 import betterquesting.questing.QuestDatabase;
@@ -65,6 +70,9 @@ public class PanelTextBox implements IGuiPanel {
     private static final String INTERACTION_SCHEME = "bqinteraction";
     private static final Map<ResourceLocation, Function<String, String>> textProcessors = new LinkedHashMap<>();
     private static final Map<ResourceLocation, TextInteraction> textInteractions = new LinkedHashMap<>();
+
+    private static final int QUEST_ICON_SIZE = 12;
+    private static final int QUEST_ICON_GAP = 2;
     private final GuiRectText transform;
     private final List<linkRange> linkRanges = new ArrayList<>();
     private final List<HotZone> hotZones = new ArrayList<>();
@@ -164,7 +172,7 @@ public class PanelTextBox implements IGuiPanel {
                                 t.getTag()
                                     .getTextFormattingString()));
 
-                    if (openingTag.getTag() == FormattingTag.URL || openingTag.getTag() == FormattingTag.QUESTLINK) {
+                    if (openingTag.getTag() == FormattingTag.URL || openingTag.getTag() == FormattingTag.QUEST) {
                         currLinkStart = textBuilder.length();
                     }
 
@@ -183,22 +191,40 @@ public class PanelTextBox implements IGuiPanel {
                                 .getOrDefault("link", textBuilder.substring(currLinkStart));
                             linkRanges.add(new linkRange(currLinkStart, textBuilder.length(), url));
                             currLinkStart = -1;
-                        } else if (closingTag == FormattingTag.QUESTLINK && currLinkStart >= 0) {
+                        } else if (closingTag == FormattingTag.QUEST && currLinkStart >= 0) {
                             String linkText = textBuilder.substring(currLinkStart);
-                            String[] questNameID = linkText.split(" ", 2);
 
-                            String displayText;
-                            UUID questUUID;
-                            try {
-                                questUUID = UuidConverter.decodeUuid(questNameID[0]);
+                            UUID questUUID = resolveQuestId(openingTag.getParams()
+                                .get("id"), linkText);
+                            String displayText = linkText;
 
-                                displayText = linkText.contains(" ") ? questNameID[1]
-                                    : QuestTranslation
-                                        .translateQuestName(questUUID, QuestDatabase.INSTANCE.get(questUUID));
-                                linkRanges
-                                    .add(new linkRange(currLinkStart, currLinkStart + displayText.length(), questUUID));
+                            if (questUUID != null) {
+                                IQuest targetQuest = QuestDatabase.INSTANCE.get(questUUID);
+                                if (targetQuest != null) {
+                                    String strippedTitle = TextFormattingUtils.stripFormatting(linkText);
+                                    boolean idText = StringUtils.isBlank(strippedTitle);
+                                    if (!idText) {
+                                        try {
+                                            UuidConverter.decodeUuid(strippedTitle);
+                                            idText = true;
+                                        } catch (Exception ignored) {}
+                                    }
+                                    if (idText) {
+                                        displayText = QuestTranslation.translateQuestName(questUUID, targetQuest);
+                                    }
+                                }
 
-                            } catch (Exception e) {
+                                BigItemStack icon = targetQuest != null ? targetQuest.getProperty(NativeProps.ICON)
+                                    : null;
+                                if (icon != null) {
+                                    displayText = FORMATTING_CODE_RESET + buildIconSpacer()
+                                        + FormattingTag.QUEST.getColourFormattingString()
+                                        + FormattingTag.QUEST.getTextFormattingString()
+                                        + displayText;
+                                }
+                                linkRanges.add(
+                                    new linkRange(currLinkStart, currLinkStart + displayText.length(), questUUID, icon));
+                            } else {
                                 displayText = "§4§lQuest Not Found§4§l";
                             }
 
@@ -292,6 +318,40 @@ public class PanelTextBox implements IGuiPanel {
         return processedText;
     }
 
+    private static UUID resolveQuestId(String idParam, String title) {
+        if (!StringUtils.isBlank(idParam)) {
+            try {
+                return UuidConverter.decodeUuid(idParam);
+            } catch (Exception ignored) {
+                // Invalid id, fall through to title lookup.
+            }
+        }
+
+        String stripped = TextFormattingUtils.stripFormatting(title);
+        if (StringUtils.isBlank(stripped)) return null;
+
+        try {
+            return UuidConverter.decodeUuid(stripped);
+        } catch (Exception ignored) {
+            // Not an id, fall through to name lookup.
+        }
+
+        for (Map.Entry<UUID, IQuest> entry : QuestDatabase.INSTANCE.entrySet()) {
+            IQuest quest = entry.getValue();
+            if (quest == null) continue;
+            String name = TextFormattingUtils.stripFormatting(QuestTranslation.translateQuestName(entry.getKey(), quest));
+            if (name.equalsIgnoreCase(stripped)) return entry.getKey();
+        }
+        return null;
+    }
+
+    private static String buildIconSpacer() {
+        FontRenderer fr = Minecraft.getMinecraft().fontRenderer;
+        int spaceWidth = Math.max(1, fr.getCharWidth(' '));
+        int reserved = QUEST_ICON_SIZE + QUEST_ICON_GAP * 2;
+        return StringUtils.repeat(' ', (reserved + spaceWidth - 1) / spaceWidth);
+    }
+
     private void bakeHotZones(List<String> lines) {
         hotZones.clear();
         if (!isHyperlinkAware()) return; // not enabled
@@ -331,7 +391,7 @@ public class PanelTextBox implements IGuiPanel {
                                 fr.FONT_HEIGHT,
                                 0);
                             location.setParent(fullbox);
-                            hotZones.add(new HotZone(location, url));
+                            hotZones.add(new HotZone(location, url, urlRange.icon));
                             break;
                         }
                         // url span multiple lines
@@ -344,7 +404,7 @@ public class PanelTextBox implements IGuiPanel {
                             fr.FONT_HEIGHT,
                             0);
                         location.setParent(fullbox);
-                        hotZones.add(new HotZone(location, url));
+                        hotZones.add(new HotZone(location, url, urlRange.icon));
                     }
                 } else {
                     if (end <= currentPos + line.length()) {
@@ -459,6 +519,17 @@ public class PanelTextBox implements IGuiPanel {
                     hotZones.get(i).location,
                     new GuiColorStatic(i % 3 == 0 ? 255 : 0, i % 3 == 1 ? 255 : 0, i % 3 == 2 ? 255 : 0, 255));
             }
+        }
+
+        for (HotZone hotZone : hotZones) {
+            if (hotZone.iconTexture == null) continue;
+            hotZone.iconTexture.drawTexture(
+                hotZone.location.getX() + QUEST_ICON_GAP,
+                hotZone.location.getY() - (int) Math.ceil((QUEST_ICON_SIZE - fr.FONT_HEIGHT) / 2.0),
+                QUEST_ICON_SIZE,
+                QUEST_ICON_SIZE,
+                1F,
+                partialTick);
         }
 
         GL11.glPopMatrix();
@@ -653,17 +724,21 @@ public class PanelTextBox implements IGuiPanel {
         public final int start;
         public final int end;
         public final Object link;
+        public final BigItemStack icon;
 
         public linkRange(int start, int end, String link) {
-            this.start = start;
-            this.end = end;
-            this.link = link;
+            this(start, end, link, null);
         }
 
         public linkRange(int start, int end, UUID link) {
+            this(start, end, link, null);
+        }
+
+        public linkRange(int start, int end, Object link, BigItemStack icon) {
             this.start = start;
             this.end = end;
             this.link = link;
+            this.icon = icon;
         }
     }
 
@@ -671,10 +746,16 @@ public class PanelTextBox implements IGuiPanel {
 
         public final IGuiRect location;
         public final Object link;
+        public final ItemTexture iconTexture;
 
         public HotZone(IGuiRect location, Object link) {
+            this(location, link, null);
+        }
+
+        public HotZone(IGuiRect location, Object link, BigItemStack icon) {
             this.location = location;
             this.link = link;
+            this.iconTexture = icon == null ? null : new ItemTexture(icon, false, true);
         }
     }
 }

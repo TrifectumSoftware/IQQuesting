@@ -78,6 +78,7 @@ public class CommonProxy {
     }
 
     public void serverStopped(FMLServerStoppedEvent event) {
+        SaveLoadHandler.INSTANCE.saveDatabases(true);
         SaveLoadHandler.INSTANCE.unloadDatabases();
         if (this.taskScheduler != null) {
             FMLCommonHandler.instance()

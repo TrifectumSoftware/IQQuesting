@@ -280,6 +280,11 @@ public class ConfigHandler {
             Configuration.CATEGORY_GENERAL,
             false,
             "If true, rewards will be disabled. This might not be supported by reward types.");
+        BQ_Settings.autoRetrievalOnIconSet = config.getBoolean(
+            "Auto retrieval task on icon set",
+            Configuration.CATEGORY_GENERAL,
+            true,
+            "If true, setting a quest icon also creates a matching retrieval task for that item.");
         config.save();
     }
 }

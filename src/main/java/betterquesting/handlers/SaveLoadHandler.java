@@ -119,9 +119,14 @@ public class SaveLoadHandler {
     }
 
     public void saveDatabases() {
+        saveDatabases(false);
+    }
+
+    public void saveDatabases(boolean forceConfig) {
         List<Future<Void>> allFutures = new ArrayList<>(5);
 
-        if (!BQ_Settings.dirtyMode || isDirty || QuestSettings.INSTANCE.getProperty(NativeProps.EDIT_MODE)) {
+        if (forceConfig || !BQ_Settings.dirtyMode || isDirty
+            || QuestSettings.INSTANCE.getProperty(NativeProps.EDIT_MODE)) {
             allFutures.add(saveConfig());
         }
 

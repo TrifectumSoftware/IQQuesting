@@ -18,6 +18,7 @@ import betterquesting.api2.client.gui.panels.lists.CanvasQuestLine;
 import betterquesting.client.gui2.editors.designer.PanelToolController;
 import betterquesting.client.gui2.editors.nbt.GuiItemSelection;
 import betterquesting.network.handlers.NetQuestEdit;
+import betterquesting.questing.QuestInstance;
 
 public class ToolboxToolIcon implements IToolboxTool {
 
@@ -59,9 +60,8 @@ public class ToolboxToolIcon implements IToolboxTool {
         mc.displayGuiScreen(new GuiItemSelection(mc.currentScreen, refItem, value -> {
             HashMap<UUID, IQuest> questsToEdit = new HashMap<>();
             for (PanelButtonQuest b : list) {
-                b.getStoredValue()
-                    .getValue()
-                    .setProperty(NativeProps.ICON, value);
+                QuestInstance.applyIcon(b.getStoredValue()
+                    .getValue(), value);
 
                 questsToEdit.put(
                     b.getStoredValue()

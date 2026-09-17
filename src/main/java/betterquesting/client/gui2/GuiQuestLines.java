@@ -23,6 +23,8 @@ import net.minecraftforge.common.config.Configuration;
 import net.minecraftforge.common.config.Property;
 
 import org.apache.commons.lang3.tuple.Pair;
+import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 import org.lwjgl.util.vector.Vector4f;
 
 import com.google.common.collect.ImmutableList;
@@ -1288,6 +1290,31 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
         panelButtonQuest.setTextures(newTexture, newTexture, newTexture);
         cvQuest.setZoom(2f);
         cvQuest.centerOn(panelButtonQuest);
+    }
+
+    @Override
+    public boolean onKeyTyped(char c, int keycode) {
+        if (super.onKeyTyped(c, keycode)) return true;
+
+        if (!GuiScreen.isCtrlKeyDown() || keycode != Keyboard.KEY_C) return false;
+
+        if (!QuestingAPI.getAPI(ApiReference.SETTINGS)
+            .canUserEdit(mc.thePlayer)) return false;
+
+        int mx = Mouse.getX() * this.width / mc.displayWidth;
+        int my = this.height - Mouse.getY() * this.height / mc.displayHeight - 1;
+
+        PanelButtonQuest btn = cvQuest == null ? null : cvQuest.getButtonAt(mx, my);
+        if (btn == null) return false;
+
+        UUID questId = btn.getStoredValue()
+            .getKey();
+        String questIdString = UuidConverter.encodeUuid(questId);
+        GuiScreen.setClipboardString(questIdString);
+        mc.thePlayer.addChatMessage(
+            new ChatComponentText(QuestTranslation.translate("betterquesting.msg.copy_quest_copied")));
+        mc.thePlayer.addChatMessage(new ChatComponentText("  " + EnumChatFormatting.AQUA + questIdString));
+        return true;
     }
 
     public void navigateToQuest(UUID targetQuestId) {

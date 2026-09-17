@@ -35,6 +35,7 @@ import betterquesting.client.gui2.editors.nbt.GuiItemSelection;
 import betterquesting.client.gui2.editors.nbt.GuiNbtEditor;
 import betterquesting.network.handlers.NetQuestEdit;
 import betterquesting.questing.QuestDatabase;
+import betterquesting.questing.QuestInstance;
 
 public class GuiQuestEditor extends GuiScreenCanvas implements IPEventListener, IVolatileScreen, INeedsRefresh {
 
@@ -285,7 +286,7 @@ public class GuiQuestEditor extends GuiScreenCanvas implements IPEventListener, 
             }
             case 8: {
                 mc.displayGuiScreen(new GuiItemSelection(this, quest.getProperty(NativeProps.ICON), value -> {
-                    quest.setProperty(NativeProps.ICON, value);
+                    QuestInstance.applyIcon(quest, value);
                     SendChanges();
                 }));
                 break;

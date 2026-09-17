@@ -45,8 +45,7 @@ public enum FormattingTag {
      * <p>
      * URL tags cannot be nested, and will break if you try.
      */
-    URL("url"),
-    QUESTLINK("questlink");
+    URL("url");
 
     public static final ImmutableMap<String, FormattingTag> NAME_TO_VALUE_MAP = ImmutableMap.copyOf(
         Arrays.stream(values())
@@ -81,20 +80,15 @@ public enum FormattingTag {
         themeFormattingStringTableBuilder.put(WARNING, BQ_OVERWORLD_THEME, "§c");
         themeFormattingStringTableBuilder.put(WARNING, BQ_STRONGHOLD_THEME, "§c");
 
-        defaultFormattingStringMapBuilder.put(QUEST, "§2");
-        themeFormattingStringTableBuilder.put(QUEST, BQ_DARK_THEME, "§a");
-        themeFormattingStringTableBuilder.put(QUEST, BQ_OVERWORLD_THEME, "§a");
-        themeFormattingStringTableBuilder.put(QUEST, BQ_STRONGHOLD_THEME, "§a");
+        defaultFormattingStringMapBuilder.put(QUEST, "§1");
+        themeFormattingStringTableBuilder.put(QUEST, BQ_DARK_THEME, "§9");
+        themeFormattingStringTableBuilder.put(QUEST, BQ_OVERWORLD_THEME, "§9");
+        themeFormattingStringTableBuilder.put(QUEST, BQ_STRONGHOLD_THEME, "§9");
 
         defaultFormattingStringMapBuilder.put(URL, "§1");
         themeFormattingStringTableBuilder.put(URL, BQ_DARK_THEME, "§9");
         themeFormattingStringTableBuilder.put(URL, BQ_OVERWORLD_THEME, "§9");
         themeFormattingStringTableBuilder.put(URL, BQ_STRONGHOLD_THEME, "§9");
-
-        defaultFormattingStringMapBuilder.put(QUESTLINK, "§1");
-        themeFormattingStringTableBuilder.put(QUESTLINK, BQ_DARK_THEME, "§9");
-        themeFormattingStringTableBuilder.put(QUESTLINK, BQ_OVERWORLD_THEME, "§9");
-        themeFormattingStringTableBuilder.put(QUESTLINK, BQ_STRONGHOLD_THEME, "§9");
 
         textFormattingStringMapBuilder.put(BOLD, "§l");
         textFormattingStringMapBuilder.put(ITALIC, "§o");
@@ -104,7 +98,6 @@ public enum FormattingTag {
 
         textFormattingStringMapBuilder.put(QUEST, "§n");
         textFormattingStringMapBuilder.put(URL, "§n");
-        textFormattingStringMapBuilder.put(QUESTLINK, "§n");
 
         DEFAULT_FORMATTING_STRING_MAP = defaultFormattingStringMapBuilder.build();
         THEME_FORMATTING_STRING_TABLE = themeFormattingStringTableBuilder.build();
@@ -122,7 +115,7 @@ public enum FormattingTag {
     }
 
     public String getColourFormattingString() {
-        if (BQ_Settings.forceMonochromeText && (this == URL || this == QUESTLINK)) {
+        if (BQ_Settings.forceMonochromeText && (this == URL || this == QUEST)) {
             return "";
         }
 
