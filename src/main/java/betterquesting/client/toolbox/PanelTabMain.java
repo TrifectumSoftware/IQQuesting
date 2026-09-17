@@ -148,6 +148,14 @@ public class PanelTabMain extends CanvasEmpty {
         return list;
     }
 
+    public static List<IToolboxTool> getTools() {
+        List<IToolboxTool> tools = new ArrayList<>();
+        for (ToolEntry entry : toolEntries) {
+            tools.add(entry.tool);
+        }
+        return tools;
+    }
+
     private static class ToolEntry {
 
         private final IToolboxTool tool;
