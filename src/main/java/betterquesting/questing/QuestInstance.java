@@ -702,8 +702,10 @@ public class QuestInstance implements IQuest {
     public static void applyIcon(IQuest quest, BigItemStack icon) {
         quest.setProperty(NativeProps.ICON, icon);
         if (icon != null && icon.getBaseStack() != null) {
-            quest.setProperty(NativeProps.NAME, icon.getBaseStack()
-                .getDisplayName());
+            quest.setProperty(
+                NativeProps.NAME,
+                icon.getBaseStack()
+                    .getDisplayName());
         }
         if (BQ_Settings.autoRetrievalOnIconSet) {
             addRetrievalTask(quest, icon);

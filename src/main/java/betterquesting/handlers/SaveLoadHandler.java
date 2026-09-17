@@ -124,13 +124,15 @@ public class SaveLoadHandler {
 
     public void saveDatabases(boolean forceConfig) {
         if (BQ_Settings.curWorldDir == null) {
-            BetterQuesting.logger.warn("Could not save databases: world directory not initialized (server likely errored before loading)");
+            BetterQuesting.logger.warn(
+                "Could not save databases: world directory not initialized (server likely errored before loading)");
             return;
         }
 
         List<Future<Void>> allFutures = new ArrayList<>(5);
 
-        if (forceConfig || !BQ_Settings.dirtyMode || isDirty
+        if (forceConfig || !BQ_Settings.dirtyMode
+            || isDirty
             || QuestSettings.INSTANCE.getProperty(NativeProps.EDIT_MODE)) {
             allFutures.add(saveConfig());
         }

@@ -1067,8 +1067,9 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
             IQuestLine line = entry.getValue();
 
             if (line.getProperty(NativeProps.IS_FOLDER)) {
-                boolean collapsed = BQ_Settings.collapsedFolders.contains(entry.getKey()
-                    .toString());
+                boolean collapsed = BQ_Settings.collapsedFolders.contains(
+                    entry.getKey()
+                        .toString());
                 rows.add(new ChapterRow(entry, true, collapsed, 0, false));
                 inFolder = true;
                 skipping = collapsed;
@@ -1112,8 +1113,8 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
         updateQuestLineScrollbar(rows.size());
     }
 
-    private void addFolderHeader(int listW, Map.Entry<UUID, IQuestLine> entry, boolean collapsed, Integer oldY, int newY,
-        boolean animate) {
+    private void addFolderHeader(int listW, Map.Entry<UUID, IQuestLine> entry, boolean collapsed, Integer oldY,
+        int newY, boolean animate) {
         cvLines.addPanel(
             new PanelGeneric(
                 rowRect(0, oldY, newY, 16, 16, 0, animate),
@@ -1124,7 +1125,7 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
                     false,
                     true)));
 
-        String label = (collapsed ? "\u25B8 " : "\u25BE ") + QuestTranslation.translateQuestLineName(entry);
+        String label = (collapsed ? "+ " : "- ") + QuestTranslation.translateQuestLineName(entry);
         PanelButton btnFolder = new PanelButton(rowRect(16, oldY, newY, listW - 16, 16, 0, animate), -1, label);
         btnFolder.setTextAlignment(0);
         btnFolder.setClickAction(b -> toggleFolder(entry.getKey()));
@@ -1191,7 +1192,8 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
             return new GuiRectangle(x, newY, w, h, depth);
         }
 
-        GuiRectLerp lerp = new GuiRectLerp(new GuiRectangle(x, oldY != null ? oldY : newY, w, oldY != null ? h : 0, depth));
+        GuiRectLerp lerp = new GuiRectLerp(
+            new GuiRectangle(x, oldY != null ? oldY : newY, w, oldY != null ? h : 0, depth));
         lerp.lerpTo(new GuiRectangle(x, newY, w, h, depth), FOLDER_ANIM_DURATION);
         return lerp;
     }
@@ -1441,8 +1443,8 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
             .getKey();
         String questIdString = UuidConverter.encodeUuid(questId);
         GuiScreen.setClipboardString(questIdString);
-        mc.thePlayer.addChatMessage(
-            new ChatComponentText(QuestTranslation.translate("betterquesting.msg.copy_quest_copied")));
+        mc.thePlayer
+            .addChatMessage(new ChatComponentText(QuestTranslation.translate("betterquesting.msg.copy_quest_copied")));
         mc.thePlayer.addChatMessage(new ChatComponentText("  " + EnumChatFormatting.AQUA + questIdString));
         return true;
     }

@@ -60,8 +60,10 @@ public class ToolboxToolIcon implements IToolboxTool {
         mc.displayGuiScreen(new GuiItemSelection(mc.currentScreen, refItem, value -> {
             HashMap<UUID, IQuest> questsToEdit = new HashMap<>();
             for (PanelButtonQuest b : list) {
-                QuestInstance.applyIcon(b.getStoredValue()
-                    .getValue(), value);
+                QuestInstance.applyIcon(
+                    b.getStoredValue()
+                        .getValue(),
+                    value);
 
                 questsToEdit.put(
                     b.getStoredValue()

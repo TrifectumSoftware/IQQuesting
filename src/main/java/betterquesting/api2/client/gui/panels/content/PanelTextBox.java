@@ -194,8 +194,10 @@ public class PanelTextBox implements IGuiPanel {
                         } else if (closingTag == FormattingTag.QUEST && currLinkStart >= 0) {
                             String linkText = textBuilder.substring(currLinkStart);
 
-                            UUID questUUID = resolveQuestId(openingTag.getParams()
-                                .get("id"), linkText);
+                            UUID questUUID = resolveQuestId(
+                                openingTag.getParams()
+                                    .get("id"),
+                                linkText);
                             String displayText = linkText;
 
                             if (questUUID != null) {
@@ -223,7 +225,11 @@ public class PanelTextBox implements IGuiPanel {
                                         + displayText;
                                 }
                                 linkRanges.add(
-                                    new linkRange(currLinkStart, currLinkStart + displayText.length(), questUUID, icon));
+                                    new linkRange(
+                                        currLinkStart,
+                                        currLinkStart + displayText.length(),
+                                        questUUID,
+                                        icon));
                             } else {
                                 displayText = "§4§lQuest Not Found§4§l";
                             }
@@ -339,7 +345,8 @@ public class PanelTextBox implements IGuiPanel {
         for (Map.Entry<UUID, IQuest> entry : QuestDatabase.INSTANCE.entrySet()) {
             IQuest quest = entry.getValue();
             if (quest == null) continue;
-            String name = TextFormattingUtils.stripFormatting(QuestTranslation.translateQuestName(entry.getKey(), quest));
+            String name = TextFormattingUtils
+                .stripFormatting(QuestTranslation.translateQuestName(entry.getKey(), quest));
             if (name.equalsIgnoreCase(stripped)) return entry.getKey();
         }
         return null;
