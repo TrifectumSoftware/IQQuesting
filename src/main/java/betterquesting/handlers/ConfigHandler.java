@@ -285,6 +285,14 @@ public class ConfigHandler {
             Configuration.CATEGORY_GENERAL,
             true,
             "If true, setting a quest icon also creates a matching retrieval task for that item.");
+        BQ_Settings.collapsedFolders.clear();
+        for (String folder : config.getStringList(
+            "Collapsed Folders",
+            Configuration.CATEGORY_GENERAL,
+            new String[0],
+            "Internal: list of collapsed quest line folder IDs.")) {
+            BQ_Settings.collapsedFolders.add(folder);
+        }
         config.save();
     }
 }

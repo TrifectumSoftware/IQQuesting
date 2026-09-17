@@ -45,6 +45,7 @@ public class QuestLine extends UuidDatabase<IQuestLineEntry> implements IQuestLi
         this.setupValue(NativeProps.VISIBILITY, EnumQuestVisibility.NORMAL);
         this.setupValue(NativeProps.BG_IMAGE);
         this.setupValue(NativeProps.BG_SIZE);
+        this.setupValue(NativeProps.IS_FOLDER);
     }
 
     private <T> void setupValue(IPropertyType<T> prop) {

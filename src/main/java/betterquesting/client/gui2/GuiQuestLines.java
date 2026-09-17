@@ -6,6 +6,7 @@ import static betterquesting.api.storage.BQ_Settings.forceMonochromeText;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -56,8 +57,10 @@ import betterquesting.api2.client.gui.events.PanelEvent;
 import betterquesting.api2.client.gui.events.types.PEventButton;
 import betterquesting.api2.client.gui.misc.GuiAlign;
 import betterquesting.api2.client.gui.misc.GuiPadding;
+import betterquesting.api2.client.gui.misc.GuiRectLerp;
 import betterquesting.api2.client.gui.misc.GuiRectangle;
 import betterquesting.api2.client.gui.misc.GuiTransform;
+import betterquesting.api2.client.gui.misc.IGuiRect;
 import betterquesting.api2.client.gui.panels.CanvasEmpty;
 import betterquesting.api2.client.gui.panels.CanvasTextured;
 import betterquesting.api2.client.gui.panels.bars.PanelVScrollBar;
@@ -136,6 +139,9 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
 
     private static boolean trayLock;
     private static boolean viewMode;
+    private static final List<String> prevChapterRowKeys = new ArrayList<>();
+    private static final long FOLDER_ANIM_DURATION = 180L;
+    private static boolean folderAnimPending = false;
     private int questsCompleted = 0;
     private int totalQuests = 0;
     private int globalQuestsCompleted = 0;
@@ -809,10 +815,17 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
         List<Map.Entry<UUID, IQuestLine>> lineList = QuestLineDatabase.INSTANCE.getOrderedEntries();
         if (lineList.isEmpty()) return false;
 
-        Map.Entry<UUID, IQuestLine> entry = lineList.get(0);
-        selectedLineId = entry.getKey();
-        selectedLine = entry.getValue();
-        return true;
+        for (Map.Entry<UUID, IQuestLine> entry : lineList) {
+            if (entry.getValue()
+                .getProperty(NativeProps.IS_FOLDER)) {
+                continue;
+            }
+            selectedLineId = entry.getKey();
+            selectedLine = entry.getValue();
+            return true;
+        }
+
+        return false;
     }
 
     private GuiBookmarks initBookmarksPanel() {
@@ -951,6 +964,9 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
 
         for (Map.Entry<UUID, IQuestLine> entry : lineList) {
             IQuestLine ql = entry.getValue();
+            if (ql.getProperty(NativeProps.IS_FOLDER)) {
+                continue;
+            }
             EnumQuestVisibility vis = ql.getProperty(NativeProps.VISIBILITY);
             if (!canEdit && vis == EnumQuestVisibility.HIDDEN) {
                 continue;
@@ -1029,61 +1045,175 @@ public class GuiQuestLines extends GuiScreenCanvas implements IPEventListener, I
     }
 
     private void buildChapterList() {
+        int listW = cvLines.getTransform()
+            .getWidth();
+
+        Map<UUID, Integer> visMap = new HashMap<>();
+        for (Tuple2<Map.Entry<UUID, IQuestLine>, Integer> chapter : visChapters) {
+            visMap.put(
+                chapter.getFirst()
+                    .getKey(),
+                chapter.getSecond());
+        }
+
+        boolean animate = folderAnimPending;
+        folderAnimPending = false;
+
+        List<ChapterRow> rows = new ArrayList<>();
+        boolean inFolder = false;
+        boolean skipping = false;
+
+        for (Map.Entry<UUID, IQuestLine> entry : QuestLineDatabase.INSTANCE.getOrderedEntries()) {
+            IQuestLine line = entry.getValue();
+
+            if (line.getProperty(NativeProps.IS_FOLDER)) {
+                boolean collapsed = BQ_Settings.collapsedFolders.contains(entry.getKey()
+                    .toString());
+                rows.add(new ChapterRow(entry, true, collapsed, 0, false));
+                inFolder = true;
+                skipping = collapsed;
+                continue;
+            }
+
+            if (skipping) continue;
+
+            Integer vis = visMap.get(entry.getKey());
+            if (vis == null) continue;
+            if (BQ_Settings.hideLockedQuestLines && (vis & 4) > 0) continue;
+
+            rows.add(new ChapterRow(entry, false, false, vis, inFolder));
+        }
+
+        Map<String, Integer> oldY = new HashMap<>();
+        for (int i = 0; i < prevChapterRowKeys.size(); i++) {
+            oldY.put(prevChapterRowKeys.get(i), i * 16);
+        }
+
         cvLines.resetCanvas();
         btnListRef.clear();
         btnVisibilityRef.clear();
 
-        int listW = cvLines.getTransform()
-            .getWidth();
-
-        int row = 0;
-        for (int n = 0; n < visChapters.size(); n++) {
-            Map.Entry<UUID, IQuestLine> entry = visChapters.get(n)
-                .getFirst();
-            int vis = visChapters.get(n)
-                .getSecond();
-
-            if (BQ_Settings.hideLockedQuestLines && (vis & 4) > 0) continue;
-
-            cvLines.addPanel(
-                new PanelGeneric(
-                    new GuiRectangle(0, row * 16, 16, 16, 0),
-                    new OreDictTexture(
-                        1F,
-                        entry.getValue()
-                            .getProperty(NativeProps.ICON),
-                        false,
-                        true)));
-
-            if ((vis & 1) > 0) {
-                cvLines.addPanel(
-                    new PanelGeneric(
-                        new GuiRectangle(8, row * 16 + 8, 8, 8, -1),
-                        new GuiTextureColored(PresetIcon.ICON_NOTICE.getTexture(), new GuiColorStatic(0xFFFFFF00))));
-            } else if ((vis & 2) > 0) {
-                cvLines.addPanel(
-                    new PanelGeneric(
-                        new GuiRectangle(8, row * 16 + 8, 8, 8, -1),
-                        new GuiTextureColored(PresetIcon.ICON_TICK.getTexture(), new GuiColorStatic(0xFF00FF00))));
+        List<String> newKeys = new ArrayList<>(rows.size());
+        for (int i = 0; i < rows.size(); i++) {
+            ChapterRow r = rows.get(i);
+            int newY = i * 16;
+            Integer old = oldY.get(r.key);
+            if (r.folder) {
+                addFolderHeader(listW, r.entry, r.collapsed, old, newY, animate);
+            } else {
+                addChapterRow(listW, r.entry, r.vis, r.indent, old, newY, animate);
             }
-            PanelButtonStorage<Map.Entry<UUID, IQuestLine>> btnLine = new PanelButtonStorage<>(
-                new GuiRectangle(16, row * 16, listW - 16, 16, 0),
-                1,
-                QuestTranslation.translateQuestLineName(entry),
-                entry);
-            btnLine.setTextAlignment(0);
-            btnLine.setActive(
-                (vis & 4) == 0 && !entry.getKey()
-                    .equals(selectedLineId));
-            btnLine.setCallback(this::openQuestLine);
-            cvLines.addPanel(btnLine);
-            btnListRef.add(btnLine);
-            btnVisibilityRef.add(vis);
-            row++;
+            newKeys.add(r.key);
         }
+        prevChapterRowKeys.clear();
+        prevChapterRowKeys.addAll(newKeys);
 
         cvLines.refreshScrollBounds();
-        updateQuestLineScrollbar(row);
+        updateQuestLineScrollbar(rows.size());
+    }
+
+    private void addFolderHeader(int listW, Map.Entry<UUID, IQuestLine> entry, boolean collapsed, Integer oldY, int newY,
+        boolean animate) {
+        cvLines.addPanel(
+            new PanelGeneric(
+                rowRect(0, oldY, newY, 16, 16, 0, animate),
+                new OreDictTexture(
+                    1F,
+                    entry.getValue()
+                        .getProperty(NativeProps.ICON),
+                    false,
+                    true)));
+
+        String label = (collapsed ? "\u25B8 " : "\u25BE ") + QuestTranslation.translateQuestLineName(entry);
+        PanelButton btnFolder = new PanelButton(rowRect(16, oldY, newY, listW - 16, 16, 0, animate), -1, label);
+        btnFolder.setTextAlignment(0);
+        btnFolder.setClickAction(b -> toggleFolder(entry.getKey()));
+        cvLines.addPanel(btnFolder);
+    }
+
+    private void toggleFolder(UUID folderId) {
+        String key = folderId.toString();
+        if (BQ_Settings.collapsedFolders.contains(key)) {
+            BQ_Settings.collapsedFolders.remove(key);
+        } else {
+            BQ_Settings.collapsedFolders.add(key);
+        }
+        ConfigHandler.config.get(Configuration.CATEGORY_GENERAL, "Collapsed Folders", new String[0])
+            .set(BQ_Settings.collapsedFolders.toArray(new String[0]));
+        ConfigHandler.config.save();
+        folderAnimPending = true;
+        buildChapterList();
+    }
+
+    private void addChapterRow(int listW, Map.Entry<UUID, IQuestLine> entry, int vis, boolean indent, Integer oldY,
+        int newY, boolean animate) {
+        int x = indent ? 8 : 0;
+
+        cvLines.addPanel(
+            new PanelGeneric(
+                rowRect(x, oldY, newY, 16, 16, 0, animate),
+                new OreDictTexture(
+                    1F,
+                    entry.getValue()
+                        .getProperty(NativeProps.ICON),
+                    false,
+                    true)));
+
+        if ((vis & 1) > 0) {
+            cvLines.addPanel(
+                new PanelGeneric(
+                    rowRect(x + 8, oldY, newY, 8, 8, -1, animate),
+                    new GuiTextureColored(PresetIcon.ICON_NOTICE.getTexture(), new GuiColorStatic(0xFFFFFF00))));
+        } else if ((vis & 2) > 0) {
+            cvLines.addPanel(
+                new PanelGeneric(
+                    rowRect(x + 8, oldY, newY, 8, 8, -1, animate),
+                    new GuiTextureColored(PresetIcon.ICON_TICK.getTexture(), new GuiColorStatic(0xFF00FF00))));
+        }
+
+        PanelButtonStorage<Map.Entry<UUID, IQuestLine>> btnLine = new PanelButtonStorage<>(
+            rowRect(16 + x, oldY, newY, listW - 16 - x, 16, 0, animate),
+            1,
+            QuestTranslation.translateQuestLineName(entry),
+            entry);
+        btnLine.setTextAlignment(0);
+        btnLine.setActive(
+            (vis & 4) == 0 && !entry.getKey()
+                .equals(selectedLineId));
+        btnLine.setCallback(this::openQuestLine);
+        cvLines.addPanel(btnLine);
+        btnListRef.add(btnLine);
+        btnVisibilityRef.add(vis);
+    }
+
+    private static IGuiRect rowRect(int x, Integer oldY, int newY, int w, int h, int depth, boolean animate) {
+        if (!animate) {
+            return new GuiRectangle(x, newY, w, h, depth);
+        }
+
+        GuiRectLerp lerp = new GuiRectLerp(new GuiRectangle(x, oldY != null ? oldY : newY, w, oldY != null ? h : 0, depth));
+        lerp.lerpTo(new GuiRectangle(x, newY, w, h, depth), FOLDER_ANIM_DURATION);
+        return lerp;
+    }
+
+    private static class ChapterRow {
+
+        private final String key;
+        private final Map.Entry<UUID, IQuestLine> entry;
+        private final boolean folder;
+        private final boolean collapsed;
+        private final int vis;
+        private final boolean indent;
+
+        private ChapterRow(Map.Entry<UUID, IQuestLine> entry, boolean folder, boolean collapsed, int vis,
+            boolean indent) {
+            this.entry = entry;
+            this.folder = folder;
+            this.collapsed = collapsed;
+            this.vis = vis;
+            this.indent = indent;
+            this.key = (folder ? "f:" : "l:") + entry.getKey();
+        }
     }
 
     private void updateQuestLineScrollbar(int rows) {

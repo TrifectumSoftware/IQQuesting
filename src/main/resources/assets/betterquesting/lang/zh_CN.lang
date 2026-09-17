@@ -43,6 +43,7 @@ betterquesting.btn.is_main=主要任务
 betterquesting.btn.requirements=前置任务
 betterquesting.btn.edit=编辑
 betterquesting.btn.new=新建
+betterquesting.btn.new_folder=新建文件夹
 betterquesting.btn.import=导入
 betterquesting.btn.logic=解锁类型
 betterquesting.btn.show=图标显示

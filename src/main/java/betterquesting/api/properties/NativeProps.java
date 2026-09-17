@@ -26,6 +26,10 @@ public class NativeProps {
         new ResourceLocation("betterquesting:desc"),
         "untitled.desc");
 
+    public static final IPropertyType<Boolean> IS_FOLDER = new PropertyTypeBoolean(
+        new ResourceLocation("betterquesting:isFolder"),
+        false);
+
     @Deprecated
     public static final IPropertyType<Boolean> MAIN = new PropertyTypeBoolean(
         new ResourceLocation("betterquesting:isMain"),

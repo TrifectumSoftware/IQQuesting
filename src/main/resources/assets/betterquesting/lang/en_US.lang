@@ -47,6 +47,7 @@ betterquesting.btn.is_main=Is Main
 betterquesting.btn.requirements=Requirements
 betterquesting.btn.edit=Edit
 betterquesting.btn.new=Add New
+betterquesting.btn.new_folder=New Folder
 betterquesting.btn.import=Import
 betterquesting.btn.logic=Logic
 betterquesting.btn.show=Show

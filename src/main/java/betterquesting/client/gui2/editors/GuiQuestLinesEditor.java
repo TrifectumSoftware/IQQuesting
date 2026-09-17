@@ -34,9 +34,11 @@ import betterquesting.api2.client.gui.misc.IGuiRect;
 import betterquesting.api2.client.gui.panels.CanvasEmpty;
 import betterquesting.api2.client.gui.panels.CanvasTextured;
 import betterquesting.api2.client.gui.panels.bars.PanelVScrollBar;
+import betterquesting.api2.client.gui.panels.content.PanelGeneric;
 import betterquesting.api2.client.gui.panels.content.PanelLine;
 import betterquesting.api2.client.gui.panels.content.PanelTextBox;
 import betterquesting.api2.client.gui.panels.lists.CanvasScrolling;
+import betterquesting.api2.client.gui.resources.textures.OreDictTexture;
 import betterquesting.api2.client.gui.themes.presets.PresetColor;
 import betterquesting.api2.client.gui.themes.presets.PresetIcon;
 import betterquesting.api2.client.gui.themes.presets.PresetLine;
@@ -56,6 +58,7 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
     private PanelButton btnDesign;
     private PanelButton btnVis;
     private PanelButton btnIcon;
+    private PanelButton btnManage;
 
     private IQuestLine selected;
     private UUID selID = null;
@@ -74,17 +77,20 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
                 btnDesign.setActive(false);
                 btnIcon.setActive(false);
                 btnVis.setActive(false);
+                btnManage.setActive(false);
                 tfName.setText("");
                 tfDesc.setText("");
             } else {
-                btnDesign.setActive(true);
                 btnIcon.setActive(true);
                 btnVis.setActive(true);
+                tfName.setText(selected.getUnlocalisedName());
+                tfDesc.setText(selected.getUnlocalisedDescription());
                 btnVis.setText(
                     QuestTranslation.translate("betterquesting.btn.show") + ": "
                         + selected.getProperty(NativeProps.VISIBILITY));
-                if (!tfName.isFocused()) tfName.setText(selected.getUnlocalisedName());
-                if (!tfDesc.isFocused()) tfDesc.setText(selected.getUnlocalisedDescription());
+                boolean isFolder = selected.getProperty(NativeProps.IS_FOLDER);
+                btnDesign.setActive(!isFolder);
+                btnManage.setActive(!isFolder);
             }
         }
 
@@ -137,6 +143,12 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
             2,
             QuestTranslation.translate("betterquesting.btn.import"));
         cvBackground.addPanel(btnImport);
+
+        PanelButton btnNewFolder = new PanelButton(
+            new GuiTransform(new Vector4f(0.5F, 1F, 0.75F, 1F), new GuiPadding(0, -40, 16, 24), 0),
+            9,
+            QuestTranslation.translate("betterquesting.btn.new_folder"));
+        cvBackground.addPanel(btnNewFolder);
 
         // Right side
 
@@ -207,18 +219,19 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
         btnVis.setActive(selected != null);
         cvRight.addPanel(btnVis);
 
-        PanelButton btnManage = new PanelButton(
-            new GuiTransform(GuiAlign.TOP_EDGE, new GuiPadding(0, 112, 0, -128), 0),
-            3,
-            QuestTranslation.translate("betterquesting.btn.add_remove_quests"));
-        cvRight.addPanel(btnManage);
-
         btnDesign = new PanelButton(
-            new GuiTransform(GuiAlign.TOP_EDGE, new GuiPadding(0, 96, 0, -112), 0),
+            new GuiTransform(GuiAlign.TOP_EDGE, new GuiPadding(0, 112, 0, -128), 0),
             4,
             QuestTranslation.translate("betterquesting.btn.designer"));
         btnDesign.setActive(selected != null);
         cvRight.addPanel(btnDesign);
+
+        btnManage = new PanelButton(
+            new GuiTransform(GuiAlign.TOP_EDGE, new GuiPadding(0, 128, 0, -144), 0),
+            3,
+            QuestTranslation.translate("betterquesting.btn.add_remove_quests"));
+        btnManage.setActive(selected != null);
+        cvRight.addPanel(btnManage);
 
         PanelButton btnTextEditor = new PanelButton(
             new GuiTransform(GuiAlign.TOP_RIGHT, new GuiPadding(-16, 48, 0, -64), 0),
@@ -249,14 +262,17 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
                 btnDesign.setActive(false);
                 btnIcon.setActive(false);
                 btnVis.setActive(false);
+                btnManage.setActive(false);
                 tfName.setText("");
                 tfDesc.setText("");
             } else {
-                btnDesign.setActive(true);
                 btnIcon.setActive(true);
                 btnVis.setActive(true);
                 if (!tfName.isFocused()) tfName.setText(selected.getUnlocalisedName());
                 if (!tfDesc.isFocused()) tfDesc.setText(selected.getUnlocalisedDescription());
+                boolean isFolder = selected.getProperty(NativeProps.IS_FOLDER);
+                btnDesign.setActive(!isFolder);
+                btnManage.setActive(!isFolder);
             }
         }
 
@@ -323,14 +339,19 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
             selID = entry.getKey();
             tfName.setText(selected.getUnlocalisedName());
             tfDesc.setText(selected.getUnlocalisedDescription());
-            btnDesign.setActive(true);
             btnIcon.setActive(true);
             btnVis.setActive(true);
             btnVis.setText(
                 QuestTranslation.translate("betterquesting.btn.show") + ": "
                     + selected.getProperty(NativeProps.VISIBILITY));
+            boolean isFolder = selected.getProperty(NativeProps.IS_FOLDER);
+            btnDesign.setActive(!isFolder);
+            btnManage.setActive(!isFolder);
 
             reloadList();
+        } else if (btn.getButtonID() == 9) // New Folder
+        {
+            NetChapterEdit.requestCreate(true);
         } else if (btn.getButtonID() == 6 && btn instanceof PanelButtonStorage) // Delete Quest
         {
             UUID questLineId = ((PanelButtonStorage<Map.Entry<UUID, IQuestLine>>) btn).getStoredValue()
@@ -362,10 +383,20 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
         int w = lineList.getTransform()
             .getWidth();
         int i = 0;
+        boolean inFolder = false;
 
         for (Map.Entry<UUID, IQuestLine> entry : QuestLineDatabase.INSTANCE.getOrderedEntries()) {
+            IQuestLine line = entry.getValue();
+            boolean isFolder = line.getProperty(NativeProps.IS_FOLDER);
+            int indent = (inFolder && !isFolder) ? 8 : 0;
+
+            lineList.addPanel(
+                new PanelGeneric(
+                    new GuiRectangle(indent, i * 16, 16, 16, 0),
+                    new OreDictTexture(1F, line.getProperty(NativeProps.ICON), false, true)));
+
             PanelButtonStorage<Map.Entry<UUID, IQuestLine>> tmp = new PanelButtonStorage<>(
-                new GuiRectangle(0, i * 16, w - 32, 16, 0),
+                new GuiRectangle(indent + 16, i * 16, w - 48 - indent, 16, 0),
                 5,
                 QuestTranslation.translateQuestLineName(entry),
                 entry);
@@ -379,6 +410,11 @@ public class GuiQuestLinesEditor extends GuiScreenCanvas implements IPEventListe
             lineList.addPanel(
                 new PanelButtonStorage<>(new GuiRectangle(w - 16, i * 16, 16, 16, 0), 7, "", entry)
                     .setIcon(PresetIcon.ICON_UP.getTexture()));
+
+            if (isFolder) {
+                inFolder = true;
+            }
+
             i++;
         }
     }

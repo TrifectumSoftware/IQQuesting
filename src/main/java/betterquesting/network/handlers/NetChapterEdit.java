@@ -19,6 +19,7 @@ import org.apache.logging.log4j.Level;
 import betterquesting.api.events.DatabaseEvent;
 import betterquesting.api.events.DatabaseEvent.DBType;
 import betterquesting.api.network.QuestingPacket;
+import betterquesting.api.properties.NativeProps;
 import betterquesting.api.questing.IQuestLine;
 import betterquesting.api.utils.NBTConverter;
 import betterquesting.api2.utils.Tuple2;
@@ -43,6 +44,7 @@ public class NetChapterEdit {
     private static final String TAG_QUEST_LINE_IDS = "questLineIDs";
     private static final String TAG_QUEST_LINES = "data";
     private static final String TAG_QUEST_LINE = "config";
+    private static final String TAG_IS_FOLDER = "isFolder";
 
     public static void registerHandler() {
         PacketTypeRegistry.INSTANCE.registerServerHandler(ID_NAME, NetChapterEdit::onServer);
@@ -97,12 +99,18 @@ public class NetChapterEdit {
 
     @SideOnly(Side.CLIENT)
     public static void requestCreate() {
+        requestCreate(false);
+    }
+
+    @SideOnly(Side.CLIENT)
+    public static void requestCreate(boolean folder) {
         NBTTagList chapters = new NBTTagList();
         chapters.appendTag(new NBTTagCompound());
 
         NBTTagCompound payload = new NBTTagCompound();
         payload.setInteger(TAG_ACTION, ACTION_CREATE);
         payload.setTag(TAG_QUEST_LINES, chapters);
+        payload.setBoolean(TAG_IS_FOLDER, folder);
         PacketSender.INSTANCE.sendToServer(new QuestingPacket(ID_NAME, payload));
     }
     // endregion request
@@ -129,7 +137,9 @@ public class NetChapterEdit {
                 NBTConverter.UuidValueType.QUEST_LINE.readIds(payload, TAG_QUEST_LINE_IDS));
             case ACTION_REORDER -> reorderChapters(
                 NBTConverter.UuidValueType.QUEST_LINE.readIds(payload, TAG_QUEST_LINE_IDS));
-            case ACTION_CREATE -> createChapters(payload.getTagList(TAG_QUEST_LINES, Constants.NBT.TAG_COMPOUND));
+            case ACTION_CREATE -> createChapters(
+                payload.getTagList(TAG_QUEST_LINES, Constants.NBT.TAG_COMPOUND),
+                payload.getBoolean(TAG_IS_FOLDER));
             default -> BetterQuesting.logger
                 .log(Level.ERROR, "Invalid chapter edit action '{}'. Full payload:\n{}", action, payload);
         }
@@ -179,7 +189,7 @@ public class NetChapterEdit {
         PacketSender.INSTANCE.sendToAll(new QuestingPacket(ID_NAME, payload));
     }
 
-    private static void createChapters(NBTTagList chapters) {
+    private static void createChapters(NBTTagList chapters, boolean isFolder) {
         List<UUID> chapterIds = new ArrayList<>(chapters.tagCount());
 
         for (int i = 0; i < chapters.tagCount(); i++) {
@@ -187,6 +197,14 @@ public class NetChapterEdit {
             UUID chapterID = NBTConverter.UuidValueType.QUEST_LINE.tryReadId(entry)
                 .orElseGet(QuestLineDatabase.INSTANCE::generateKey);
             IQuestLine chapter = QuestLineDatabase.INSTANCE.createNew(chapterID);
+
+            if (isFolder) {
+                chapter.setProperty(NativeProps.IS_FOLDER, true);
+                chapter.setProperty(NativeProps.NAME, "New Folder");
+            }
+
+            // Force the new chapter into the ordering immediately so it is saved with a deterministic order.
+            QuestLineDatabase.INSTANCE.getOrderIndex(chapterID);
 
             chapterIds.add(chapterID);
             if (entry.hasKey(TAG_QUEST_LINE, Constants.NBT.TAG_COMPOUND)) {

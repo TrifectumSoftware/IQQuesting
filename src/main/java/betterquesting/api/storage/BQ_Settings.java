@@ -1,6 +1,8 @@
 package betterquesting.api.storage;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * A container for all the configurable settings in the mod
@@ -64,4 +66,7 @@ public class BQ_Settings {
     public static boolean unrestrictAdminCommands = false;
     public static boolean noRewards = false;
     public static boolean autoRetrievalOnIconSet = true;
+
+    /** Cosmetic list of collapsed quest line folder IDs. Persisted to the config file. */
+    public static final Set<String> collapsedFolders = new HashSet<>();
 }
